@@ -70,9 +70,10 @@ footer{text-align:center;color:#64748b;font-size:.75rem;padding:5px}
     <div class="line"><span>Frais estimés du lot</span><strong id="totalFees">15,00 €</strong></div>
     <div id="purchaseResult" hidden>
       <hr style="border:0;border-top:1px solid #bfdbfe;margin:12px 0">
-      <div class="line"><span>Bénéfice par boîte</span><strong id="profit">—</strong></div>
-      <div class="line"><span>Rentabilité sur achat</span><strong id="roi">—</strong></div>
-      <div class="line"><span>Bénéfice sur le lot</span><strong id="lotProfit">—</strong></div>
+      <div class="line"><span>Prix de vente conseillé / boîte</span><strong id="recommendedSale">—</strong></div>
+      <div class="line"><span>Bénéfice par boîte au prix saisi</span><strong id="profit">—</strong></div>
+      <div class="line"><span>Rentabilité sur achat au prix saisi</span><strong id="roi">—</strong></div>
+      <div class="line"><span>Bénéfice sur le lot au prix saisi</span><strong id="lotProfit">—</strong></div>
       <div id="status" class="status"></div>
     </div>
   </div>
@@ -93,12 +94,21 @@ function update(){
  const net=sale*(1-fees/100)-shipping-other, max=Math.max(0,net/1.25);
  $('maxBuy').textContent=euro(max);$('lotMax').textContent=euro(max*qty);
  $('totalSale').textContent=euro(sale*qty);$('totalFees').textContent=euro((sale-net)*qty);
- if($('buy').value.trim()!==''&&buy>0&&net>0){
-  const profit=net-buy,roi=profit/buy*100;$('purchaseResult').hidden=false;
-  $('profit').textContent=euro(profit);$('roi').textContent=roi.toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
-  $('lotProfit').textContent=euro(profit*qty);
-  const st=$('status');if(buy<=max){st.textContent='Objectif de 25 % atteint';st.className='status good'}
-  else{st.textContent='Prix d’achat trop élevé';st.className='status bad'}
+ if($('buy').value.trim()!==''&&buy>0){
+  const recommendedSale=(buy*1.25+shipping+other)/(1-fees/100);
+  $('purchaseResult').hidden=false;
+  $('recommendedSale').textContent=euro(recommendedSale);
+  if(net>0){
+   const profit=net-buy,roi=profit/buy*100;
+   $('profit').textContent=euro(profit);
+   $('roi').textContent=roi.toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
+   $('lotProfit').textContent=euro(profit*qty);
+   const st=$('status');if(buy<=max){st.textContent='Objectif de 25 % atteint au prix de revente saisi';st.className='status good'}
+   else{st.textContent='Prix de revente saisi insuffisant pour atteindre 25 %';st.className='status bad'}
+  } else {
+   $('profit').textContent='—';$('roi').textContent='—';$('lotProfit').textContent='—';
+   const st=$('status');st.textContent='Renseigne un prix de revente positif pour comparer';st.className='status'
+  }
  }else{$('purchaseResult').hidden=true}
  ids.forEach(id=>{try{localStorage.setItem('lego_pwa_'+id,$(id).value)}catch(e){}});
 }
