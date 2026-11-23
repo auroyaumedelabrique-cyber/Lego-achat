@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172554">
+<meta name="description" content="Calculateur de prix d'achat maximum pour les achats-reventes LEGO.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>LEGO Achat</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#172033;background:#f3f5f9}
+*{box-sizing:border-box}body{margin:0;padding:16px;max-width:720px;margin-inline:auto}
+header{padding:20px;border-radius:18px;background:#172554;color:white;margin-bottom:14px}
+h1{font-size:1.4rem;margin:0 0 5px}header p{margin:0;color:#dbeafe;font-size:.9rem}
+main{display:grid;gap:13px}.card{background:white;border:1px solid #e1e6ef;border-radius:16px;padding:16px}
+h2{font-size:1rem;margin:0 0 13px}.field{margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:.84rem;font-weight:650;margin-bottom:6px}
+input{width:100%;font:inherit;font-size:1rem;padding:12px;border:1px solid #cbd5e1;border-radius:10px;background:white;color:#172033}
+input:focus{outline:2px solid #93c5fd;border-color:#2563eb}.hint,.note{font-size:.76rem;color:#64748b;line-height:1.45;margin-top:5px}
+.result{background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:16px}
+.kicker{font-size:.76rem;font-weight:750;color:#1d4ed8;letter-spacing:.04em}
+.big{font-size:2.1rem;font-weight:850;color:#166534;margin:4px 0 10px}
+.line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #dbeafe}
+.line:last-child{border:0}.line strong{text-align:right}
+.status{font-weight:750;padding:9px 12px;border-radius:9px;display:inline-block;margin-top:10px}
+.good{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}
+button{width:100%;border:0;background:#172554;color:white;padding:13px;border-radius:11px;font:inherit;font-weight:750}
+button.secondary{background:white;color:#172033;border:1px solid #cbd5e1}
+footer{text-align:center;color:#64748b;font-size:.75rem;padding:5px}
+@media(max-width:400px){body{padding:11px}.grid{gap:8px}.big{font-size:1.85rem}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧱 LEGO Achat</h1>
+  <p>Ton prix d'achat maximum avec 25 % de rentabilité minimum.</p>
+</header>
+<main>
+<section class="card">
+  <h2>1. Revente estimée (par boîte)</h2>
+  <div class="field">
+    <label for="sale">Prix de revente réaliste (€)</label>
+    <input id="sale" type="number" min="0" step="0.01" value="150" inputmode="decimal">
+    <div class="hint">Le prix auquel tu penses réellement vendre, pas le prix catalogue.</div>
+  </div>
+  <div class="field">
+    <label for="fees">Commission de vente (%)</label>
+    <input id="fees" type="number" min="0" max="100" step="0.1" value="10" inputmode="decimal">
+  </div>
+  <div class="grid">
+    <div class="field"><label for="shipping">Port à ta charge (€)</label><input id="shipping" type="number" min="0" step="0.01" value="0" inputmode="decimal"></div>
+    <div class="field"><label for="other">Autres frais (€)</label><input id="other" type="number" min="0" step="0.01" value="0" inputmode="decimal"></div>
+  </div>
+</section>
+<section class="card">
+  <h2>2. Simulation d'achat</h2>
+  <div class="grid">
+    <div class="field"><label for="qty">Nombre de boîtes</label><input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+    <div class="field"><label for="buy">Prix d'achat envisagé (€ / boîte)</label><input id="buy" type="number" min="0" step="0.01" placeholder="Facultatif" inputmode="decimal"></div>
+  </div>
+</section>
+<section class="card">
+  <h2>3. Résultat</h2>
+  <div class="result">
+    <div class="kicker">PRIX D'ACHAT MAXIMUM PAR BOÎTE</div>
+    <div class="big" id="maxBuy">108,00 €</div>
+    <div class="line"><span>Budget maximum du lot</span><strong id="lotMax">108,00 €</strong></div>
+    <div class="line"><span>Revente totale</span><strong id="totalSale">150,00 €</strong></div>
+    <div class="line"><span>Frais estimés du lot</span><strong id="totalFees">15,00 €</strong></div>
+    <div id="purchaseResult" hidden>
+      <hr style="border:0;border-top:1px solid #bfdbfe;margin:12px 0">
+      <div class="line"><span>Bénéfice par boîte</span><strong id="profit">—</strong></div>
+      <div class="line"><span>Rentabilité sur achat</span><strong id="roi">—</strong></div>
+      <div class="line"><span>Bénéfice sur le lot</span><strong id="lotProfit">—</strong></div>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+  <p class="note">Formule : (revente − commission − frais) ÷ 1,25. La rentabilité est calculée sur le prix d'achat. Fiscalité non incluse.</p>
+</section>
+<button class="secondary" id="reset" type="button">Réinitialiser les valeurs</button>
+</main>
+<footer>LEGO Achat · Outil personnel de calcul</footer>
+<script>
+const ids=['sale','fees','shipping','other','qty','buy'];
+const $=id=>document.getElementById(id);
+const euro=n=>n.toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+function num(id){const v=parseFloat($(id).value);return Number.isFinite(v)?v:0}
+function update(){
+ const sale=Math.max(0,num('sale')), fees=Math.min(100,Math.max(0,num('fees')));
+ const shipping=Math.max(0,num('shipping')), other=Math.max(0,num('other'));
+ const qty=Math.max(1,Math.floor(num('qty')||1)), buy=Math.max(0,num('buy'));
+ const net=sale*(1-fees/100)-shipping-other, max=Math.max(0,net/1.25);
+ $('maxBuy').textContent=euro(max);$('lotMax').textContent=euro(max*qty);
+ $('totalSale').textContent=euro(sale*qty);$('totalFees').textContent=euro((sale-net)*qty);
+ if($('buy').value.trim()!==''&&buy>0&&net>0){
+  const profit=net-buy,roi=profit/buy*100;$('purchaseResult').hidden=false;
+  $('profit').textContent=euro(profit);$('roi').textContent=roi.toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
+  $('lotProfit').textContent=euro(profit*qty);
+  const st=$('status');if(buy<=max){st.textContent='Objectif de 25 % atteint';st.className='status good'}
+  else{st.textContent='Prix d’achat trop élevé';st.className='status bad'}
+ }else{$('purchaseResult').hidden=true}
+ ids.forEach(id=>{try{localStorage.setItem('lego_pwa_'+id,$(id).value)}catch(e){}});
+}
+ids.forEach(id=>{try{const v=localStorage.getItem('lego_pwa_'+id);if(v!==null)$(id).value=v}catch(e){};$(id).addEventListener('input',update)});
+$('reset').addEventListener('click',()=>{const d={sale:'150',fees:'10',shipping:'0',other:'0',qty:'1',buy:''};Object.entries(d).forEach(([k,v])=>$(k).value=v);update()});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
+update();
+</script>
+</body>
+</html>
